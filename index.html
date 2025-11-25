@@ -6,68 +6,68 @@
     <title>介護事業所 空き状況管理システム</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #f5e6f0 0%, #e8d5e5 100%); padding: 20px; min-height: 100vh; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #F5EEF8 0%, #E9E3EB 100%); padding: 20px; min-height: 100vh; }
         .container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); overflow: hidden; }
-        .header { background: linear-gradient(135deg, #9c6b98 0%, #8b5a87 100%); color: white; padding: 30px; text-align: center; }
+        .header { background: linear-gradient(135deg, #D99AAD 0%, #C789A0 100%); color: white; padding: 30px; text-align: center; }
         .header h1 { font-size: 28px; margin-bottom: 8px; }
         .header p { font-size: 14px; opacity: 0.95; }
-        .tabs { display: flex; background: #f8f4f7; border-bottom: 2px solid #e0d5de; }
-        .tab-btn { flex: 1; padding: 15px; border: none; background: none; cursor: pointer; font-size: 14px; font-weight: bold; border-bottom: 3px solid transparent; transition: all 0.3s; color: #666; }
-        .tab-btn.active { background: white; border-bottom: 3px solid #9c6b98; color: #9c6b98; }
-        .tab-btn:hover { background: #faf8fa; }
-        .content { display: none; padding: 30px; }
+        .tabs { display: flex; background: #F9F6F8; border-bottom: 2px solid #E9DFE5; }
+        .tab-btn { flex: 1; padding: 15px; border: none; background: none; cursor: pointer; font-size: 14px; font-weight: bold; border-bottom: 3px solid transparent; transition: all 0.3s; color: #2D2E1B; }
+        .tab-btn.active { background: white; border-bottom: 3px solid #D99AAD; color: #D99AAD; }
+        .tab-btn:hover { background: #FBF9FA; }
+        .content { display: none; padding: 30px; background: #FEFEFE; }
         .content.active { display: block; }
         .facility-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
-        .facility-card { border: 2px solid #e8dce6; border-radius: 12px; padding: 20px; background: #fafafa; transition: all 0.3s; cursor: pointer; }
-        .facility-card:hover { box-shadow: 0 6px 20px rgba(156,107,152,0.12); transform: translateY(-2px); border-color: #d4c0d1; }
-        .facility-card.has-vacancy { background: #faf7f9; }
-        .facility-card.category-day { border-left: 5px solid #8b7a9e; }
-        .facility-card.category-visit { border-left: 5px solid #6b89a8; }
-        .facility-card.category-facility { border-left: 5px solid #7a9b7f; }
-        .facility-card.category-disability { border-left: 5px solid #c89968; }
-        .facility-card.category-complex { border-left: 5px solid #a87b8e; }
-        .facility-name { font-size: 15px; font-weight: bold; margin-bottom: 8px; color: #4a4a4a; }
-        .facility-type { font-size: 12px; color: #888; margin-bottom: 12px; background: #f0eef0; padding: 4px 8px; border-radius: 4px; display: inline-block; }
+        .facility-card { border: 2px solid #E9E3EB; border-radius: 12px; padding: 20px; background: #FAFAFA; transition: all 0.3s; cursor: pointer; }
+        .facility-card:hover { box-shadow: 0 6px 20px rgba(217,154,173,0.15); transform: translateY(-2px); border-color: #D99AAD; }
+        .facility-card.has-vacancy { background: #FBF9FA; }
+        .facility-card.category-day { border-left: 5px solid #B8A5B0; }
+        .facility-card.category-visit { border-left: 5px solid #9BA5B8; }
+        .facility-card.category-facility { border-left: 5px solid #A5B8A5; }
+        .facility-card.category-disability { border-left: 5px solid #C9B59B; }
+        .facility-card.category-complex { border-left: 5px solid #C799A8; }
+        .facility-name { font-size: 15px; font-weight: bold; margin-bottom: 8px; color: #2D2E1B; }
+        .facility-type { font-size: 12px; color: #6B6B6B; margin-bottom: 12px; background: #F5F1F3; padding: 4px 8px; border-radius: 4px; display: inline-block; }
         .vacancy-status { font-size: 13px; margin-bottom: 8px; padding: 8px; border-radius: 6px; text-align: center; font-weight: bold; }
-        .vacancy-available { background: #e8dce6; color: #6b4567; }
-        .vacancy-limited { background: #f5f0f4; color: #7a5876; }
-        .vacancy-none { background: #f5f0f4; color: #9a7896; }
+        .vacancy-available { background: #F3E6EC; color: #7B4A5B; }
+        .vacancy-limited { background: #F9F5F7; color: #8B5C6E; }
+        .vacancy-none { background: #F9F5F7; color: #A0798B; }
         .day-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 12px; }
-        .day-cell { font-size: 11px; padding: 6px; border-radius: 4px; text-align: center; border: 1px solid #e0e0e0; }
-        .day-cell.available { background: #d4c0d1; color: #5a3956; font-weight: bold; }
-        .day-cell.unavailable { background: #f5f5f5; color: #999; }
-        .detail-btn { width: 100%; padding: 10px; background: #9c6b98; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; margin-top: 10px; transition: all 0.3s; }
-        .detail-btn:hover { background: #8b5a87; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; }
+        .day-cell { font-size: 11px; padding: 6px; border-radius: 4px; text-align: center; border: 1px solid #E0E0E0; }
+        .day-cell.available { background: #E9DFE5; color: #5A3A47; font-weight: bold; }
+        .day-cell.unavailable { background: #F5F5F5; color: #999; }
+        .detail-btn { width: 100%; padding: 10px; background: #D99AAD; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; margin-top: 10px; transition: all 0.3s; }
+        .detail-btn:hover { background: #C789A0; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(45,46,27,0.4); z-index: 1000; align-items: center; justify-content: center; }
         .modal.active { display: flex; }
         .modal-content { background: white; border-radius: 12px; padding: 30px; max-width: 600px; max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 50px rgba(0,0,0,0.2); }
-        .modal-header { font-size: 22px; font-weight: bold; margin-bottom: 20px; color: #9c6b98; display: flex; justify-content: space-between; align-items: center; }
+        .modal-header { font-size: 22px; font-weight: bold; margin-bottom: 20px; color: #D99AAD; display: flex; justify-content: space-between; align-items: center; }
         .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #999; }
         .close-btn:hover { color: #666; }
-        .day-section { margin-bottom: 20px; padding: 15px; background: #faf7f9; border-radius: 8px; border-left: 4px solid #9c6b98; }
-        .day-title { font-size: 14px; font-weight: bold; color: #9c6b98; margin-bottom: 10px; }
+        .day-section { margin-bottom: 20px; padding: 15px; background: #FBF9FA; border-radius: 8px; border-left: 4px solid #D99AAD; }
+        .day-title { font-size: 14px; font-weight: bold; color: #D99AAD; margin-bottom: 10px; }
         .info-row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 13px; }
-        .info-label { color: #777; font-weight: bold; }
-        .info-value { color: #4a4a4a; }
+        .info-label { color: #6B6B6B; font-weight: bold; }
+        .info-value { color: #2D2E1B; }
         .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #555; }
-        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #d4c0d1; border-radius: 4px; font-size: 13px; font-family: Arial, sans-serif; }
-        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #9c6b98; box-shadow: 0 0 0 2px rgba(156,107,152,0.1); }
+        .form-group label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #2D2E1B; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #E9E3EB; border-radius: 4px; font-size: 13px; font-family: Arial, sans-serif; background: white; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #D99AAD; box-shadow: 0 0 0 2px rgba(217,154,173,0.1); }
         .form-group textarea { min-height: 60px; resize: vertical; }
         .facility-selector { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 20px; }
-        .selector-btn { padding: 12px; border: 2px solid #e8dce6; background: white; cursor: pointer; border-radius: 6px; font-weight: bold; font-size: 13px; color: #666; transition: all 0.3s; }
-        .selector-btn.active { background: #9c6b98; color: white; border-color: #9c6b98; }
-        .selector-btn:hover { border-color: #9c6b98; background: #faf7f9; }
+        .selector-btn { padding: 12px; border: 2px solid #E9E3EB; background: white; cursor: pointer; border-radius: 6px; font-weight: bold; font-size: 13px; color: #2D2E1B; transition: all 0.3s; }
+        .selector-btn.active { background: #D99AAD; color: white; border-color: #D99AAD; }
+        .selector-btn:hover { border-color: #D99AAD; background: #FBF9FA; }
         .checkbox-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0; }
         .checkbox-item { display: flex; align-items: center; gap: 6px; }
-        .checkbox-item input { width: 18px; height: 18px; accent-color: #9c6b98; }
-        .checkbox-item label { font-size: 13px; cursor: pointer; color: #555; }
-        .save-btn { width: 100%; padding: 12px; background: #9c6b98; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; margin-top: 20px; transition: all 0.3s; }
-        .save-btn:hover { background: #8b5a87; }
-        .info-box { background: #f5f0f4; border-left: 4px solid #9c6b98; padding: 12px; margin-bottom: 20px; border-radius: 4px; font-size: 13px; color: #555; }
-        .info-box strong { color: #7a5876; }
-        .vacancy-badge { display: inline-block; background: #9c6b98; color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-left: 10px; }
-        .warning-badge { display: inline-block; background: #d89b7f; color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-left: 10px; }
+        .checkbox-item input { width: 18px; height: 18px; accent-color: #D99AAD; }
+        .checkbox-item label { font-size: 13px; cursor: pointer; color: #2D2E1B; }
+        .save-btn { width: 100%; padding: 12px; background: #D99AAD; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; margin-top: 20px; transition: all 0.3s; }
+        .save-btn:hover { background: #C789A0; }
+        .info-box { background: #F9F5F7; border-left: 4px solid #D99AAD; padding: 12px; margin-bottom: 20px; border-radius: 4px; font-size: 13px; color: #2D2E1B; }
+        .info-box strong { color: #7B4A5B; }
+        .vacancy-badge { display: inline-block; background: #D99AAD; color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-left: 10px; }
+        .warning-badge { display: inline-block; background: #DAB89B; color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-left: 10px; }
     </style>
 </head>
 <body>
@@ -133,6 +133,18 @@
         let authenticatedFacilities = {};
 
         function initData() {
+            // ローカルストレージからデータを読み込む
+            const savedData = localStorage.getItem('facilityData');
+            if (savedData) {
+                try {
+                    data = JSON.parse(savedData);
+                    return;
+                } catch (e) {
+                    console.error('データの読み込みに失敗しました', e);
+                }
+            }
+
+            // 初期データを作成
             facilities.forEach(f => {
                 if (f.type === 'day' || f.type === 'visit' || f.type === 'complex') {
                     data[f.id] = { holidays: [] };
@@ -159,6 +171,15 @@
                     };
                 }
             });
+            saveData();
+        }
+
+        function saveData() {
+            try {
+                localStorage.setItem('facilityData', JSON.stringify(data));
+            } catch (e) {
+                console.error('データの保存に失敗しました', e);
+            }
         }
 
         function switchTab(tab) {
@@ -301,9 +322,9 @@
                 document.getElementById('facility-selector').innerHTML = selectorHtml;
 
                 let authHtml = `
-                    <div style="max-width: 400px; margin: 40px auto; padding: 30px; background: #faf7f9; border-radius: 12px; border: 2px solid #9c6b98; text-align: center;">
-                        <div style="font-size: 18px; font-weight: bold; color: #9c6b98; margin-bottom: 20px;">🔒 パスワード認証</div>
-                        <div style="font-size: 14px; color: #666; margin-bottom: 20px;">${f.name}</div>
+                    <div style="max-width: 400px; margin: 40px auto; padding: 30px; background: #FBF9FA; border-radius: 12px; border: 2px solid #D99AAD; text-align: center;">
+                        <div style="font-size: 18px; font-weight: bold; color: #D99AAD; margin-bottom: 20px;">🔒 パスワード認証</div>
+                        <div style="font-size: 14px; color: #2D2E1B; margin-bottom: 20px;">${f.name}</div>
                         <div class="form-group">
                             <label style="text-align: left;">パスワードを入力してください</label>
                             <input type="password" id="auth-password" placeholder="パスワード" onkeypress="if(event.key==='Enter') authenticatePassword(${currentFacility})">
@@ -449,7 +470,7 @@
                 `;
             }
 
-            formHtml += `<button class="save-btn" onclick="renderFacilityList(); switchTab('view')">保存 & 確認画面へ</button>`;
+            formHtml += `<button class="save-btn" onclick="saveAndLogout()">保存してログアウト</button>`;
             document.getElementById('input-form').innerHTML = formHtml;
         }
 
@@ -471,6 +492,14 @@
             }
         }
 
+        function saveAndLogout() {
+            saveData();
+            authenticatedFacilities[currentFacility] = false;
+            alert('保存しました。ログアウトします。');
+            renderFacilityList();
+            switchTab('view');
+        }
+
         function updateHoliday(fac_id, day, isChecked) {
             if (!data[fac_id].holidays) data[fac_id].holidays = [];
             if (isChecked) {
@@ -478,16 +507,19 @@
             } else {
                 data[fac_id].holidays = data[fac_id].holidays.filter(d => d !== day);
             }
+            saveData();
         }
 
         function updateDayTime(fac_id, day, time, isChecked) {
             data[fac_id][day][time] = isChecked;
             data[fac_id][day].lastUpdated = new Date().toISOString();
+            saveData();
         }
 
         function updateRequirement(fac_id, day, type, level, isChecked) {
             data[fac_id][day][type][level] = isChecked;
             data[fac_id][day].lastUpdated = new Date().toISOString();
+            saveData();
         }
 
         function updateNote(fac_id, day, value) {
@@ -498,31 +530,37 @@
                 data[fac_id].note = value;
                 data[fac_id].lastUpdated = new Date().toISOString();
             }
+            saveData();
         }
 
         function updatePhone(fac_id, value) {
             data[fac_id].phone = value;
             data[fac_id].lastUpdated = new Date().toISOString();
+            saveData();
         }
 
         function updateStatus(fac_id, value) {
             data[fac_id].status = value;
             data[fac_id].lastUpdated = new Date().toISOString();
+            saveData();
         }
 
         function updateCapacity(fac_id, value) {
             data[fac_id].capacity = parseInt(value) || 0;
             data[fac_id].lastUpdated = new Date().toISOString();
+            saveData();
         }
 
         function updateFacilityCare(fac_id, level, isChecked) {
             data[fac_id].care[level] = isChecked;
             data[fac_id].lastUpdated = new Date().toISOString();
+            saveData();
         }
 
         function updateFacilityDisability(fac_id, level, isChecked) {
             data[fac_id].disability[level] = isChecked;
             data[fac_id].lastUpdated = new Date().toISOString();
+            saveData();
         }
 
         // 初期化
