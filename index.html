@@ -1,122 +1,571 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>介護事業所 空き状況管理システム</title>
-  <style>
-    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", Arial, sans-serif; margin: 24px; line-height: 1.7; }
-    header { margin-bottom: 16px; }
-    h1 { font-size: 1.4rem; margin: 0; }
-    .desc { color: #555; margin-top: 4px; }
-    .card { border: 1px solid #ddd; border-radius: 8px; padding: 12px 16px; margin: 12px 0; background: #fafafa; }
-    .title { font-weight: 600; font-size: 1.1rem; margin-bottom: 6px; }
-    .updated { font-size: .85rem; color: #666; }
-    .error { color: #b00020; }
-    .toolbar { display: flex; gap: 8px; align-items: center; margin: 12px 0; }
-    button { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer; }
-    button:hover { background: #f3f3f3; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>介護事業所 空き状況管理システム</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #F5EEF8 0%, #E9E3EB 100%); padding: 20px; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #D99AAD 0%, #C789A0 100%); color: white; padding: 30px; text-align: center; }
+        .header h1 { font-size: 28px; margin-bottom: 8px; }
+        .header p { font-size: 14px; opacity: 0.95; }
+        .tabs { display: flex; background: #F9F6F8; border-bottom: 2px solid #E9DFE5; }
+        .tab-btn { flex: 1; padding: 15px; border: none; background: none; cursor: pointer; font-size: 14px; font-weight: bold; border-bottom: 3px solid transparent; transition: all 0.3s; color: #2D2E1B; }
+        .tab-btn.active { background: white; border-bottom: 3px solid #D99AAD; color: #D99AAD; }
+        .tab-btn:hover { background: #FBF9FA; }
+        .content { display: none; padding: 30px; background: #FEFEFE; }
+        .content.active { display: block; }
+        .facility-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .facility-card { border: 2px solid #E9E3EB; border-radius: 12px; padding: 20px; background: #FAFAFA; transition: all 0.3s; cursor: pointer; }
+        .facility-card:hover { box-shadow: 0 6px 20px rgba(217,154,173,0.15); transform: translateY(-2px); border-color: #D99AAD; }
+        .facility-card.has-vacancy { background: #FBF9FA; }
+        .facility-card.category-day { border-left: 5px solid #B8A5B0; }
+        .facility-card.category-visit { border-left: 5px solid #9BA5B8; }
+        .facility-card.category-facility { border-left: 5px solid #A5B8A5; }
+        .facility-card.category-disability { border-left: 5px solid #C9B59B; }
+        .facility-card.category-complex { border-left: 5px solid #C799A8; }
+        .facility-name { font-size: 15px; font-weight: bold; margin-bottom: 8px; color: #2D2E1B; }
+        .facility-type { font-size: 12px; color: #6B6B6B; margin-bottom: 12px; background: #F5F1F3; padding: 4px 8px; border-radius: 4px; display: inline-block; }
+        .vacancy-status { font-size: 13px; margin-bottom: 8px; padding: 8px; border-radius: 6px; text-align: center; font-weight: bold; }
+        .vacancy-available { background: #F3E6EC; color: #7B4A5B; }
+        .vacancy-limited { background: #F9F5F7; color: #8B5C6E; }
+        .vacancy-none { background: #F9F5F7; color: #A0798B; }
+        .day-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 12px; }
+        .day-cell { font-size: 11px; padding: 6px; border-radius: 4px; text-align: center; border: 1px solid #E0E0E0; }
+        .day-cell.available { background: #E9DFE5; color: #5A3A47; font-weight: bold; }
+        .day-cell.unavailable { background: #F5F5F5; color: #999; }
+        .detail-btn { width: 100%; padding: 10px; background: #D99AAD; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; margin-top: 10px; transition: all 0.3s; }
+        .detail-btn:hover { background: #C789A0; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(45,46,27,0.4); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; border-radius: 12px; padding: 30px; max-width: 600px; max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 50px rgba(0,0,0,0.2); }
+        .modal-header { font-size: 22px; font-weight: bold; margin-bottom: 20px; color: #D99AAD; display: flex; justify-content: space-between; align-items: center; }
+        .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #999; }
+        .close-btn:hover { color: #666; }
+        .day-section { margin-bottom: 20px; padding: 15px; background: #FBF9FA; border-radius: 8px; border-left: 4px solid #D99AAD; }
+        .day-title { font-size: 14px; font-weight: bold; color: #D99AAD; margin-bottom: 10px; }
+        .info-row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 13px; }
+        .info-label { color: #6B6B6B; font-weight: bold; }
+        .info-value { color: #2D2E1B; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #2D2E1B; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #E9E3EB; border-radius: 4px; font-size: 13px; font-family: Arial, sans-serif; background: white; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #D99AAD; box-shadow: 0 0 0 2px rgba(217,154,173,0.1); }
+        .form-group textarea { min-height: 60px; resize: vertical; }
+        .facility-selector { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 20px; }
+        .selector-btn { padding: 12px; border: 2px solid #E9E3EB; background: white; cursor: pointer; border-radius: 6px; font-weight: bold; font-size: 13px; color: #2D2E1B; transition: all 0.3s; }
+        .selector-btn.active { background: #D99AAD; color: white; border-color: #D99AAD; }
+        .selector-btn:hover { border-color: #D99AAD; background: #FBF9FA; }
+        .checkbox-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0; }
+        .checkbox-item { display: flex; align-items: center; gap: 6px; }
+        .checkbox-item input { width: 18px; height: 18px; accent-color: #D99AAD; }
+        .checkbox-item label { font-size: 13px; cursor: pointer; color: #2D2E1B; }
+        .save-btn { width: 100%; padding: 12px; background: #D99AAD; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; margin-top: 20px; transition: all 0.3s; }
+        .save-btn:hover { background: #C789A0; }
+        .info-box { background: #F9F5F7; border-left: 4px solid #D99AAD; padding: 12px; margin-bottom: 20px; border-radius: 4px; font-size: 13px; color: #2D2E1B; }
+        .info-box strong { color: #7B4A5B; }
+        .vacancy-badge { display: inline-block; background: #D99AAD; color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-left: 10px; }
+        .warning-badge { display: inline-block; background: #DAB89B; color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-left: 10px; }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 介護事業所 空き状況管理システム</h1>
+            <p>リアルタイムで募集状況を確認・更新</p>
+        </div>
 
-<header>
-  <h1>📋 介護事業所 空き状況管理システム</h1>
-  <p class="desc">リアルタイムで募集状況を確認・更新（更新はスプレッドシートで実施）</p>
-  <nav class="desc">👁️ 確認（ケアマネジャー向け）　✏️ 入力（事業所向け）　📞 リアルタイム空き状況</nav>
-</header>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('view')">👁️ 確認（ケアマネジャー向け）</button>
+            <button class="tab-btn" onclick="switchTab('input')">✏️ 入力（事業所向け）</button>
+        </div>
 
-<section class="toolbar">
-  <button id="reloadBtn">最新情報を再取得</button>
-  <span id="status"></span>
-</section>
+        <div id="view" class="content active">
+            <div class="info-box">
+                <strong>📞 リアルタイム空き状況</strong>
+                <p style="margin-top: 5px; font-size: 12px;">各事業所の募集状況を確認。気になる事業所をクリックして詳細を見る</p>
+            </div>
+            <div class="facility-grid" id="facility-list"></div>
+        </div>
 
-<div id="content"></div>
-<p id="error" class="error" hidden></p>
+        <div id="input" class="content">
+            <div class="info-box">
+                <strong>✏️ 募集状況入力</strong>
+                <p style="margin-top: 5px; font-size: 12px;">週1回、事業所の最新状況を入力してください</p>
+            </div>
+            <div class="facility-selector" id="facility-selector"></div>
+            <div id="input-form"></div>
+        </div>
+    </div>
 
-<script>
-  // ① このURLを、スプレッドシートの「ウェブに公開（CSV）」のURLに差し替えてください
-  // 例: https://docs.google.com/spreadsheets/d/XXXXXXXXXXXX/pub?output=csv
-  const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQGV8SeToaI7L1lucDfze36mZZCRWWFTICTIwik5yfK-cv_CN1xnN0D9lCjKn72ijknDLnUrJqPVgAa/pub?output=csv";
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span id="modal-title"></span>
+                <button class="close-btn" onclick="closeModal()">×</button>
+            </div>
+            <div id="modal-body"></div>
+        </div>
+    </div>
 
-  // キャッシュ無効化のためのクエリ（毎回違う値を付ける）
-  const cacheBuster = () => `cb=${Date.now()}`;
+    <script>
+        const facilities = [
+            { id: 1, name: '南野ステップアップデイサービスセンター', type: 'day', category: 'デイサービス', phone: '072-781-5670', password: '1234' },
+            { id: 2, name: '荒牧デイサービスセンター', type: 'day', category: 'デイサービス', phone: '072-777-7006', password: '5678' },
+            { id: 3, name: '訪問介護事業所', type: 'visit', category: '訪問系', phone: '072-781-2900', password: '2020' },
+            { id: 4, name: '訪問看護ステーション', type: 'visit', category: '訪問系', phone: '072-780-2904', password: '3030' },
+            { id: 5, name: '東有岡ワークハウス', type: 'facility', category: '障害系', phone: '072-783-9885', password: '4040' },
+            { id: 6, name: 'サポートテラス', type: 'facility', category: '障害系', phone: '072-773-4115', password: '5050' },
+            { id: 7, name: '養護老人ホーム松風園', type: 'facility', category: '施設系', phone: '072-781-2900', password: '6060' },
+            { id: 8, name: '特別養護老人ホームケアハイツいたみ', type: 'facility', category: '施設系', phone: '072-773-2286', password: '7070' },
+            { id: 9, name: '特別養護老人ホームケアハイツなかの', type: 'facility', category: '施設系', phone: '072-781-1771', password: '8080' },
+            { id: 10, name: '看護小規模多機能居宅介護さくら', type: 'complex', category: '複合型', phone: '072-785-3365', password: '9090' },
+            { id: 11, name: 'サテライト型看護小規模多機能居宅介護さくら', type: 'complex', category: '複合型', phone: '072-775-2884', password: '1010' }
+        ];
 
-  async function fetchCsv(url) {
-    const res = await fetch(`${url}&${cacheBuster()}`, { cache: "no-store" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.text();
-  }
+        const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+        const dayLabels = { mon: '月', tue: '火', wed: '水', thu: '木', fri: '金', sat: '土', sun: '日' };
+        
+        let data = {};
+        let currentFacility = 1;
+        let authenticatedFacilities = {};
 
-  // CSVを配列に変換（シンプルなCSV想定）
-  function parseCsv(text) {
-    // 改行で行分割、カンマで列分割
-    const rows = text.trim().split(/\r?\n/).map(line => {
-      // ダブルクォートで囲まれたカンマを考慮する簡易パーサ
-      const out = []; let cur = ""; let inQuote = false;
-      for (let i = 0; i < line.length; i++) {
-        const ch = line[i];
-        if (ch === '"') {
-          if (inQuote && line[i+1] === '"') { cur += '"'; i++; }  // エスケープされたクォート
-          else { inQuote = !inQuote; }
-        } else if (ch === ',' && !inQuote) {
-          out.push(cur); cur = "";
-        } else {
-          cur += ch;
+        function initData() {
+            // ローカルストレージからデータを読み込む
+            const savedData = localStorage.getItem('facilityData');
+            if (savedData) {
+                try {
+                    data = JSON.parse(savedData);
+                    return;
+                } catch (e) {
+                    console.error('データの読み込みに失敗しました', e);
+                }
+            }
+
+            // 初期データを作成
+            facilities.forEach(f => {
+                if (f.type === 'day' || f.type === 'visit' || f.type === 'complex') {
+                    data[f.id] = { holidays: [] };
+                    days.forEach(d => {
+                        data[f.id][d] = {
+                            morning: true,
+                            afternoon: true,
+                            evening: false,
+                            care: {},
+                            disability: {},
+                            note: '',
+                            lastUpdated: new Date().toISOString()
+                        };
+                    });
+                } else {
+                    data[f.id] = {
+                        status: 'open',
+                        capacity: 5,
+                        care: {},
+                        disability: {},
+                        note: '',
+                        phone: f.phone,
+                        lastUpdated: new Date().toISOString()
+                    };
+                }
+            });
+            saveData();
         }
-      }
-      out.push(cur);
-      return out;
-    });
-    const [header, ...data] = rows;
-    const idxTitle = header.indexOf("title");
-    const idxBody  = header.indexOf("body");
-    return data.map(r => ({ title: r[idxTitle] ?? "", body: r[idxBody] ?? "" }));
-  }
 
-  function render(items) {
-    const container = document.getElementById("content");
-    container.innerHTML = "";
-    items.forEach(item => {
-      const card = document.createElement("div");
-      card.className = "card";
-      const h = document.createElement("div");
-      h.className = "title";
-      h.textContent = item.title || "（無題）";
-      const p = document.createElement("div");
-      p.innerHTML = (item.body || "").replace(/\n/g, "<br>");
-      const meta = document.createElement("div");
-      meta.className = "updated";
-      const now = new Date();
-      meta.textContent = `最終取得: ${now.toLocaleString()}`;
-      card.appendChild(h);
-      card.appendChild(p);
-      card.appendChild(meta);
-      container.appendChild(card);
-    });
-  }
+        function saveData() {
+            try {
+                localStorage.setItem('facilityData', JSON.stringify(data));
+            } catch (e) {
+                console.error('データの保存に失敗しました', e);
+            }
+        }
 
-  async function load() {
-    const status = document.getElementById("status");
-    const error  = document.getElementById("error");
-    error.hidden = true;
-    status.textContent = "取得中…";
-    try {
-      const csvText = await fetchCsv(CSV_URL);
-      const items = parseCsv(csvText);
-      render(items);
-      status.textContent = "最新データを表示中";
-    } catch (e) {
-      console.error(e);
-      error.hidden = false;
-      error.textContent = "データ取得に失敗しました。公開URLや権限設定をご確認ください。";
-      status.textContent = "";
-    }
-  }
+        function switchTab(tab) {
+            document.querySelectorAll('.content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
+            event.target.classList.add('active');
+            if (tab === 'input') renderInputForm();
+            if (tab === 'view') renderFacilityList();
+        }
 
-  document.getElementById("reloadBtn").addEventListener("click", load);
-  load(); // 初回ロード
-</script>
+        function isOutdated(fac_id) {
+            const f = facilities.find(f => f.id === fac_id);
+            let lastUpdate;
+            
+            if (f.type === 'day' || f.type === 'visit' || f.type === 'complex') {
+                const allUpdates = days.map(d => data[fac_id][d].lastUpdated).filter(d => d);
+                if (allUpdates.length === 0) return false;
+                lastUpdate = new Date(allUpdates[0]);
+            } else {
+                lastUpdate = new Date(data[fac_id].lastUpdated);
+            }
+            
+            const now = new Date();
+            const diff = Math.floor((now - lastUpdate) / (1000 * 60 * 60 * 24));
+            return diff >= 10;
+        }
 
+        function hasAvailability(fac) {
+            if (fac.type === 'day' || fac.type === 'visit' || fac.type === 'complex') {
+                return days.some(d => {
+                    if (data[fac.id].holidays && data[fac.id].holidays.includes(d)) return false;
+                    return data[fac.id][d].morning || data[fac.id][d].afternoon || data[fac.id][d].evening;
+                });
+            } else {
+                return data[fac.id].status === 'open' || data[fac.id].status === 'limited';
+            }
+        }
+
+        function renderFacilityList() {
+            let html = '';
+            facilities.forEach(f => {
+                const available = hasAvailability(f);
+                const outdated = isOutdated(f.id);
+                const categoryClass = f.category === 'デイサービス' ? 'day' : f.category === '訪問系' ? 'visit' : f.category === '施設系' ? 'facility' : f.category === '障害系' ? 'disability' : 'complex';
+                
+                html += `
+                    <div class="facility-card ${available ? 'has-vacancy' : ''} category-${categoryClass}" onclick="openModal(${f.id})">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                            <div>
+                                <div class="facility-name">${f.name}</div>
+                                <span class="facility-type">${f.category}</span>
+                            </div>
+                            <div>
+                                ${available ? '<span class="vacancy-badge">空きあり</span>' : ''}
+                                ${outdated ? '<span class="warning-badge">10日以上未更新</span>' : ''}
+                            </div>
+                        </div>
+                        <div class="vacancy-status ${available ? 'vacancy-available' : 'vacancy-none'}">${available ? '募集中' : '募集なし'}</div>
+                        <div style="font-size: 12px; color: #666;">📞 ${data[f.id].phone || f.phone}</div>
+                `;
+
+                if (f.type === 'day' || f.type === 'visit' || f.type === 'complex') {
+                    html += `<div class="day-grid">`;
+                    days.forEach(d => {
+                        if (data[f.id].holidays && data[f.id].holidays.includes(d)) return;
+                        const d_data = data[f.id][d];
+                        const hasTime = d_data.morning || d_data.afternoon || d_data.evening;
+                        html += `<div class="day-cell ${hasTime ? 'available' : 'unavailable'}">${dayLabels[d]}</div>`;
+                    });
+                    html += `</div>`;
+                } else {
+                    html += `<div style="font-size: 12px; margin-top: 10px; color: #666;">定員残数: <strong>${data[f.id].capacity}名</strong></div>`;
+                }
+
+                html += `<button class="detail-btn">詳細を見る</button></div>`;
+            });
+            document.getElementById('facility-list').innerHTML = html;
+        }
+
+        function openModal(fac_id) {
+            const f = facilities.find(f => f.id === fac_id);
+            document.getElementById('modal-title').textContent = f.name;
+
+            let body = '';
+            if (f.type === 'day' || f.type === 'visit' || f.type === 'complex') {
+                days.forEach(d => {
+                    if (data[fac_id].holidays && data[fac_id].holidays.includes(d)) return;
+                    const d_data = data[fac_id][d];
+                    const times = [];
+                    if (d_data.morning) times.push('午前');
+                    if (d_data.afternoon) times.push('午後');
+                    if (d_data.evening) times.push('夜間');
+                    
+                    const careList = Object.keys(d_data.care).filter(k => d_data.care[k]);
+                    const disabilityList = Object.keys(d_data.disability).filter(k => d_data.disability[k]);
+
+                    body += `
+                        <div class="day-section">
+                            <div class="day-title">${dayLabels[d]}曜日 ${times.length > 0 ? `<span style="color: #22c55e;">${times.join('・')}</span>` : '<span style="color: #999;">受け入れ不可</span>'}</div>
+                            ${times.length > 0 ? `
+                                ${careList.length > 0 ? `<div class="info-row"><span class="info-label">対応要介護度:</span><span class="info-value">${careList.join('・')}</span></div>` : ''}
+                                ${disabilityList.length > 0 ? `<div class="info-row"><span class="info-label">対応障害等級:</span><span class="info-value">${disabilityList.map(l => `第${l}級`).join('・')}</span></div>` : ''}
+                                ${d_data.note ? `<div class="info-row"><span class="info-label">備考:</span><span class="info-value">${d_data.note}</span></div>` : ''}
+                            ` : ''}
+                        </div>
+                    `;
+                });
+            } else {
+                const careList = Object.keys(data[fac_id].care).filter(k => data[fac_id].care[k]);
+                const disabilityList = Object.keys(data[fac_id].disability).filter(k => data[fac_id].disability[k]);
+                
+                body = `
+                    <div class="day-section">
+                        <div class="info-row"><span class="info-label">募集状況:</span><span class="info-value">${data[fac_id].status === 'open' ? '募集中' : data[fac_id].status === 'limited' ? '限定募集' : '募集なし'}</span></div>
+                        <div class="info-row"><span class="info-label">定員残数:</span><span class="info-value">${data[fac_id].capacity}名</span></div>
+                        ${careList.length > 0 ? `<div class="info-row"><span class="info-label">対応要介護度:</span><span class="info-value">${careList.join('・')}</span></div>` : ''}
+                        ${disabilityList.length > 0 ? `<div class="info-row"><span class="info-label">対応障害等級:</span><span class="info-value">${disabilityList.map(l => `第${l}級`).join('・')}</span></div>` : ''}
+                        ${data[fac_id].note ? `<div class="info-row"><span class="info-label">備考:</span><span class="info-value">${data[fac_id].note}</span></div>` : ''}
+                    </div>
+                `;
+            }
+            document.getElementById('modal-body').innerHTML = body;
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        function renderInputForm() {
+            const f = facilities.find(f => f.id === currentFacility);
+            
+            // パスワード認証チェック
+            if (!authenticatedFacilities[currentFacility]) {
+                let selectorHtml = '';
+                facilities.forEach(fac => {
+                    selectorHtml += `<button class="selector-btn ${fac.id === currentFacility ? 'active' : ''}" onclick="selectFacility(${fac.id})">${fac.name}</button>`;
+                });
+                document.getElementById('facility-selector').innerHTML = selectorHtml;
+
+                let authHtml = `
+                    <div style="max-width: 400px; margin: 40px auto; padding: 30px; background: #FBF9FA; border-radius: 12px; border: 2px solid #D99AAD; text-align: center;">
+                        <div style="font-size: 18px; font-weight: bold; color: #D99AAD; margin-bottom: 20px;">🔒 パスワード認証</div>
+                        <div style="font-size: 14px; color: #2D2E1B; margin-bottom: 20px;">${f.name}</div>
+                        <div class="form-group">
+                            <label style="text-align: left;">パスワードを入力してください</label>
+                            <input type="password" id="auth-password" placeholder="パスワード" onkeypress="if(event.key==='Enter') authenticatePassword(${currentFacility})">
+                        </div>
+                        <button class="save-btn" onclick="authenticatePassword(${currentFacility})">ログイン</button>
+                    </div>
+                `;
+                document.getElementById('input-form').innerHTML = authHtml;
+                return;
+            }
+
+            let selectorHtml = '';
+            facilities.forEach(fac => {
+                selectorHtml += `<button class="selector-btn ${fac.id === currentFacility ? 'active' : ''}" onclick="selectFacility(${fac.id})">${fac.name}</button>`;
+            });
+            document.getElementById('facility-selector').innerHTML = selectorHtml;
+
+            let formHtml = '';
+            
+            if (f.type === 'day' || f.type === 'visit' || f.type === 'complex') {
+                formHtml += `<div style="margin-bottom: 20px;"><strong style="font-size: 14px;">曜日ごとの募集状況を入力</strong></div>`;
+                formHtml += `
+                    <div style="background: #fff5f9; border: 1px solid #d81b60; border-radius: 6px; padding: 12px; margin-bottom: 20px;">
+                        <strong style="font-size: 12px; color: #d81b60;">定休日を設定</strong>
+                        <div class="checkbox-group" style="margin-top: 8px;">
+                            ${days.map(d => `
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="holiday-${d}" ${data[currentFacility].holidays && data[currentFacility].holidays.includes(d) ? 'checked' : ''} onchange="updateHoliday(${currentFacility}, '${d}', this.checked)">
+                                    <label for="holiday-${d}">${dayLabels[d]}曜日</label>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+
+                days.forEach(d => {
+                    if (data[currentFacility].holidays && data[currentFacility].holidays.includes(d)) return;
+                    const d_data = data[currentFacility][d];
+                    
+                    formHtml += `
+                        <div class="day-section">
+                            <div class="day-title">${dayLabels[d]}曜日</div>
+                            <div class="checkbox-group">
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="morning-${d}" ${d_data.morning ? 'checked' : ''} onchange="updateDayTime(${currentFacility}, '${d}', 'morning', this.checked)">
+                                    <label for="morning-${d}">午前</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="afternoon-${d}" ${d_data.afternoon ? 'checked' : ''} onchange="updateDayTime(${currentFacility}, '${d}', 'afternoon', this.checked)">
+                                    <label for="afternoon-${d}">午後</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="evening-${d}" ${d_data.evening ? 'checked' : ''} onchange="updateDayTime(${currentFacility}, '${d}', 'evening', this.checked)">
+                                    <label for="evening-${d}">夜間</label>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>対応要介護度（複数選択可）</label>
+                                <div class="checkbox-group">
+                                    ${['要支援1', '要支援2', '要介護1', '要介護2', '要介護3', '要介護4', '要介護5', '非該当'].map(level => `
+                                        <div class="checkbox-item">
+                                            <input type="checkbox" id="care-${d}-${level}" ${d_data.care[level] ? 'checked' : ''} onchange="updateRequirement(${currentFacility}, '${d}', 'care', '${level}', this.checked)">
+                                            <label for="care-${d}-${level}">${level}</label>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+
+                            ${f.type === 'visit' || f.type === 'complex' ? `
+                                <div class="form-group">
+                                    <label>対応障害等級（複数選択可）</label>
+                                    <div class="checkbox-group">
+                                        ${['1', '2', '3', '4', '5', '6', '7'].map(level => `
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="disability-${d}-${level}" ${d_data.disability[level] ? 'checked' : ''} onchange="updateRequirement(${currentFacility}, '${d}', 'disability', '${level}', this.checked)">
+                                                <label for="disability-${d}-${level}">第${level}級</label>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+
+                            <div class="form-group">
+                                <label>その他備考</label>
+                                <textarea onchange="updateNote(${currentFacility}, '${d}', this.value)">${d_data.note || ''}</textarea>
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                formHtml += `
+                    <div style="margin-bottom: 20px;"><strong style="font-size: 14px;">基本情報</strong></div>
+                    <div class="form-group">
+                        <label>電話番号</label>
+                        <input type="tel" value="${data[currentFacility].phone || ''}" onchange="updatePhone(${currentFacility}, this.value)">
+                    </div>
+                    <div class="form-group">
+                        <label>募集状況</label>
+                        <select onchange="updateStatus(${currentFacility}, this.value)">
+                            <option ${data[currentFacility].status === 'open' ? 'selected' : ''}>open</option>
+                            <option ${data[currentFacility].status === 'limited' ? 'selected' : ''}>limited</option>
+                            <option ${data[currentFacility].status === 'closed' ? 'selected' : ''}>closed</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>定員残数（名）</label>
+                        <input type="number" value="${data[currentFacility].capacity}" min="0" onchange="updateCapacity(${currentFacility}, this.value)">
+                    </div>
+
+                    ${f.category === '施設系' ? `
+                        <div class="form-group">
+                            <label>対応要介護度（複数選択可）</label>
+                            <div class="checkbox-group">
+                                ${['要支援1', '要支援2', '要介護1', '要介護2', '要介護3', '要介護4', '要介護5', '非該当'].map(level => `
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="care-facility-${level}" ${data[currentFacility].care[level] ? 'checked' : ''} onchange="updateFacilityCare(${currentFacility}, '${level}', this.checked)">
+                                        <label for="care-facility-${level}">${level}</label>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${f.category === '障害系' ? `
+                        <div class="form-group">
+                            <label>対応障害等級（複数選択可）</label>
+                            <div class="checkbox-group">
+                                ${['1', '2', '3', '4', '5', '6', '7'].map(level => `
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="disability-facility-${level}" ${data[currentFacility].disability[level] ? 'checked' : ''} onchange="updateFacilityDisability(${currentFacility}, '${level}', this.checked)">
+                                        <label for="disability-facility-${level}">第${level}級</label>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <div class="form-group">
+                        <label>備考</label>
+                        <textarea onchange="updateNote(${currentFacility}, null, this.value)">${data[currentFacility].note || ''}</textarea>
+                    </div>
+                `;
+            }
+
+            formHtml += `<button class="save-btn" onclick="saveAndLogout()">保存してログアウト</button>`;
+            document.getElementById('input-form').innerHTML = formHtml;
+        }
+
+        function selectFacility(id) {
+            currentFacility = id;
+            renderInputForm();
+        }
+
+        function authenticatePassword(fac_id) {
+            const f = facilities.find(f => f.id === fac_id);
+            const inputPassword = document.getElementById('auth-password').value;
+            
+            if (inputPassword === f.password) {
+                authenticatedFacilities[fac_id] = true;
+                renderInputForm();
+            } else {
+                alert('パスワードが間違っています');
+                document.getElementById('auth-password').value = '';
+            }
+        }
+
+        function saveAndLogout() {
+            saveData();
+            authenticatedFacilities[currentFacility] = false;
+            alert('保存しました。ログアウトします。');
+            renderFacilityList();
+            switchTab('view');
+        }
+
+        function updateHoliday(fac_id, day, isChecked) {
+            if (!data[fac_id].holidays) data[fac_id].holidays = [];
+            if (isChecked) {
+                if (!data[fac_id].holidays.includes(day)) data[fac_id].holidays.push(day);
+            } else {
+                data[fac_id].holidays = data[fac_id].holidays.filter(d => d !== day);
+            }
+            saveData();
+        }
+
+        function updateDayTime(fac_id, day, time, isChecked) {
+            data[fac_id][day][time] = isChecked;
+            data[fac_id][day].lastUpdated = new Date().toISOString();
+            saveData();
+        }
+
+        function updateRequirement(fac_id, day, type, level, isChecked) {
+            data[fac_id][day][type][level] = isChecked;
+            data[fac_id][day].lastUpdated = new Date().toISOString();
+            saveData();
+        }
+
+        function updateNote(fac_id, day, value) {
+            if (day) {
+                data[fac_id][day].note = value;
+                data[fac_id][day].lastUpdated = new Date().toISOString();
+            } else {
+                data[fac_id].note = value;
+                data[fac_id].lastUpdated = new Date().toISOString();
+            }
+            saveData();
+        }
+
+        function updatePhone(fac_id, value) {
+            data[fac_id].phone = value;
+            data[fac_id].lastUpdated = new Date().toISOString();
+            saveData();
+        }
+
+        function updateStatus(fac_id, value) {
+            data[fac_id].status = value;
+            data[fac_id].lastUpdated = new Date().toISOString();
+            saveData();
+        }
+
+        function updateCapacity(fac_id, value) {
+            data[fac_id].capacity = parseInt(value) || 0;
+            data[fac_id].lastUpdated = new Date().toISOString();
+            saveData();
+        }
+
+        function updateFacilityCare(fac_id, level, isChecked) {
+            data[fac_id].care[level] = isChecked;
+            data[fac_id].lastUpdated = new Date().toISOString();
+            saveData();
+        }
+
+        function updateFacilityDisability(fac_id, level, isChecked) {
+            data[fac_id].disability[level] = isChecked;
+            data[fac_id].lastUpdated = new Date().toISOString();
+            saveData();
+        }
+
+        // 初期化
+        initData();
+        renderFacilityList();
+    </script>
 </body>
-
+</html>
