@@ -68,6 +68,7 @@
         .info-box strong { color: #7B4A5B; }
         .vacancy-badge { display: inline-block; background: #D99AAD; color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-left: 10px; }
         .warning-badge { display: inline-block; background: #DAB89B; color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-left: 10px; }
+        .loading { text-align: center; padding: 40px; color: #D99AAD; font-size: 16px; }
     </style>
 </head>
 <body>
@@ -87,7 +88,8 @@
                 <strong>📞 リアルタイム空き状況</strong>
                 <p style="margin-top: 5px; font-size: 12px;">各事業所の募集状況を確認。気になる事業所をクリックして詳細を見る</p>
             </div>
-            <div class="facility-grid" id="facility-list"></div>
+            <div id="loading-view" class="loading">読み込み中...</div>
+            <div class="facility-grid" id="facility-list" style="display: none;"></div>
         </div>
 
         <div id="input" class="content">
@@ -110,7 +112,23 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, set, get, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCHDXl2caw-MRkggU8CgJtsLfBwRIF58nQ",
+            authDomain: "akizyoukyou.firebaseapp.com",
+            databaseURL: "https://akizyoukyou-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "akizyoukyou",
+            storageBucket: "akizyoukyou.firebasestorage.app",
+            messagingSenderId: "735799821776",
+            appId: "1:735799821776:web:c723a365d95565104765d5"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
         const facilities = [
             { id: 1, name: '南野ステップアップデイサービスセンター', type: 'day', category: 'デイサービス', phone: '072-781-5670', password: '1234' },
             { id: 2, name: '荒牧デイサービスセンター', type: 'day', category: 'デイサービス', phone: '072-777-7006', password: '5678' },
@@ -127,31 +145,53 @@
 
         const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
         const dayLabels = { mon: '月', tue: '火', wed: '水', thu: '木', fri: '金', sat: '土', sun: '日' };
-        
+
         let data = {};
         let currentFacility = 1;
         let authenticatedFacilities = {};
 
-        function initData() {
-            // ローカルストレージからデータを読み込む
-            const savedData = localStorage.getItem('facilityData');
-            if (savedData) {
-                try {
-                    data = JSON.parse(savedData);
-                    return;
-                } catch (e) {
-                    console.error('データの読み込みに失敗しました', e);
+        // Firebase からデータを読み込み
+        async function loadData() {
+            try {
+                const dataRef = ref(database, 'facilities');
+                const snapshot = await get(dataRef);
+                
+                if (snapshot.exists()) {
+                    data = snapshot.val();
+                } else {
+                    await initData();
                 }
+                
+                document.getElementById('loading-view').style.display = 'none';
+                document.getElementById('facility-list').style.display = 'grid';
+                renderFacilityList();
+            } catch (error) {
+                console.error('データ読み込みエラー:', error);
+                document.getElementById('loading-view').textContent = 'データの読み込みに失敗しました';
             }
+        }
 
-            // 初期データを作成
+        // リアルタイム更新をリッスン
+        function setupRealtimeListener() {
+            const dataRef = ref(database, 'facilities');
+            onValue(dataRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    data = snapshot.val();
+                    if (document.getElementById('view').classList.contains('active')) {
+                        renderFacilityList();
+                    }
+                }
+            });
+        }
+
+        async function initData() {
             facilities.forEach(f => {
                 if (f.type === 'day' || f.type === 'visit' || f.type === 'complex') {
                     data[f.id] = { holidays: [] };
                     days.forEach(d => {
                         data[f.id][d] = {
-                            morning: true,
-                            afternoon: true,
+                            morning: false,
+                            afternoon: false,
                             evening: false,
                             care: {},
                             disability: {},
@@ -161,8 +201,8 @@
                     });
                 } else {
                     data[f.id] = {
-                        status: 'open',
-                        capacity: 5,
+                        status: 'closed',
+                        capacity: 0,
                         care: {},
                         disability: {},
                         note: '',
@@ -171,25 +211,35 @@
                     };
                 }
             });
-            saveData();
+            await saveData();
         }
 
-        function saveData() {
+        async function saveData() {
             try {
-                localStorage.setItem('facilityData', JSON.stringify(data));
-            } catch (e) {
-                console.error('データの保存に失敗しました', e);
+                await set(ref(database, 'facilities'), data);
+            } catch (error) {
+                console.error('保存エラー:', error);
+                alert('データの保存に失敗しました');
             }
         }
 
-        function switchTab(tab) {
+        window.switchTab = function(tab) {
             document.querySelectorAll('.content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
             document.getElementById(tab).classList.add('active');
-            event.target.classList.add('active');
+            
+            // クリックされたボタンをアクティブに
+            const buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(btn => {
+                if ((tab === 'view' && btn.textContent.includes('確認')) || 
+                    (tab === 'input' && btn.textContent.includes('入力'))) {
+                    btn.classList.add('active');
+                }
+            });
+            
             if (tab === 'input') renderInputForm();
             if (tab === 'view') renderFacilityList();
-        }
+        };
 
         function isOutdated(fac_id) {
             const f = facilities.find(f => f.id === fac_id);
@@ -239,7 +289,7 @@
                             </div>
                         </div>
                         <div class="vacancy-status ${available ? 'vacancy-available' : 'vacancy-none'}">${available ? '募集中' : '募集なし'}</div>
-                        <div style="font-size: 12px; color: #666;">📞 ${data[f.id].phone || f.phone}</div>
+                        <div style="font-size: 12px; color: #6B6B6B;">📞 ${data[f.id].phone || f.phone}</div>
                 `;
 
                 if (f.type === 'day' || f.type === 'visit' || f.type === 'complex') {
@@ -252,7 +302,7 @@
                     });
                     html += `</div>`;
                 } else {
-                    html += `<div style="font-size: 12px; margin-top: 10px; color: #666;">定員残数: <strong>${data[f.id].capacity}名</strong></div>`;
+                    html += `<div style="font-size: 12px; margin-top: 10px; color: #6B6B6B;">定員残数: <strong>${data[f.id].capacity}名</strong></div>`;
                 }
 
                 html += `<button class="detail-btn">詳細を見る</button></div>`;
@@ -260,7 +310,7 @@
             document.getElementById('facility-list').innerHTML = html;
         }
 
-        function openModal(fac_id) {
+        window.openModal = function(fac_id) {
             const f = facilities.find(f => f.id === fac_id);
             document.getElementById('modal-title').textContent = f.name;
 
@@ -304,16 +354,15 @@
             }
             document.getElementById('modal-body').innerHTML = body;
             document.getElementById('modal').classList.add('active');
-        }
+        };
 
-        function closeModal() {
+        window.closeModal = function() {
             document.getElementById('modal').classList.remove('active');
-        }
+        };
 
         function renderInputForm() {
             const f = facilities.find(f => f.id === currentFacility);
             
-            // パスワード認証チェック
             if (!authenticatedFacilities[currentFacility]) {
                 let selectorHtml = '';
                 facilities.forEach(fac => {
@@ -347,8 +396,8 @@
             if (f.type === 'day' || f.type === 'visit' || f.type === 'complex') {
                 formHtml += `<div style="margin-bottom: 20px;"><strong style="font-size: 14px;">曜日ごとの募集状況を入力</strong></div>`;
                 formHtml += `
-                    <div style="background: #fff5f9; border: 1px solid #d81b60; border-radius: 6px; padding: 12px; margin-bottom: 20px;">
-                        <strong style="font-size: 12px; color: #d81b60;">定休日を設定</strong>
+                    <div style="background: #FBF9FA; border: 1px solid #D99AAD; border-radius: 6px; padding: 12px; margin-bottom: 20px;">
+                        <strong style="font-size: 12px; color: #D99AAD;">定休日を設定</strong>
                         <div class="checkbox-group" style="margin-top: 8px;">
                             ${days.map(d => `
                                 <div class="checkbox-item">
@@ -474,12 +523,12 @@
             document.getElementById('input-form').innerHTML = formHtml;
         }
 
-        function selectFacility(id) {
+        window.selectFacility = function(id) {
             currentFacility = id;
             renderInputForm();
-        }
+        };
 
-        function authenticatePassword(fac_id) {
+        window.authenticatePassword = function(fac_id) {
             const f = facilities.find(f => f.id === fac_id);
             const inputPassword = document.getElementById('auth-password').value;
             
@@ -490,39 +539,31 @@
                 alert('パスワードが間違っています');
                 document.getElementById('auth-password').value = '';
             }
-        }
+        };
 
-        function saveAndLogout() {
-            saveData();
-            authenticatedFacilities[currentFacility] = false;
-            alert('保存しました。ログアウトします。');
-            renderFacilityList();
-            switchTab('view');
-        }
-
-        function updateHoliday(fac_id, day, isChecked) {
+        window.updateHoliday = async function(fac_id, day, isChecked) {
             if (!data[fac_id].holidays) data[fac_id].holidays = [];
             if (isChecked) {
                 if (!data[fac_id].holidays.includes(day)) data[fac_id].holidays.push(day);
             } else {
                 data[fac_id].holidays = data[fac_id].holidays.filter(d => d !== day);
             }
-            saveData();
-        }
+            await saveData();
+        };
 
-        function updateDayTime(fac_id, day, time, isChecked) {
+        window.updateDayTime = async function(fac_id, day, time, isChecked) {
             data[fac_id][day][time] = isChecked;
             data[fac_id][day].lastUpdated = new Date().toISOString();
-            saveData();
-        }
+            await saveData();
+        };
 
-        function updateRequirement(fac_id, day, type, level, isChecked) {
+        window.updateRequirement = async function(fac_id, day, type, level, isChecked) {
             data[fac_id][day][type][level] = isChecked;
             data[fac_id][day].lastUpdated = new Date().toISOString();
-            saveData();
-        }
+            await saveData();
+        };
 
-        function updateNote(fac_id, day, value) {
+        window.updateNote = async function(fac_id, day, value) {
             if (day) {
                 data[fac_id][day].note = value;
                 data[fac_id][day].lastUpdated = new Date().toISOString();
@@ -530,42 +571,49 @@
                 data[fac_id].note = value;
                 data[fac_id].lastUpdated = new Date().toISOString();
             }
-            saveData();
-        }
+            await saveData();
+        };
 
-        function updatePhone(fac_id, value) {
+        window.updatePhone = async function(fac_id, value) {
             data[fac_id].phone = value;
             data[fac_id].lastUpdated = new Date().toISOString();
-            saveData();
-        }
+            await saveData();
+        };
 
-        function updateStatus(fac_id, value) {
+        window.updateStatus = async function(fac_id, value) {
             data[fac_id].status = value;
             data[fac_id].lastUpdated = new Date().toISOString();
-            saveData();
-        }
+            await saveData();
+        };
 
-        function updateCapacity(fac_id, value) {
+        window.updateCapacity = async function(fac_id, value) {
             data[fac_id].capacity = parseInt(value) || 0;
             data[fac_id].lastUpdated = new Date().toISOString();
-            saveData();
-        }
+            await saveData();
+        };
 
-        function updateFacilityCare(fac_id, level, isChecked) {
+        window.updateFacilityCare = async function(fac_id, level, isChecked) {
             data[fac_id].care[level] = isChecked;
             data[fac_id].lastUpdated = new Date().toISOString();
-            saveData();
-        }
+            await saveData();
+        };
 
-        function updateFacilityDisability(fac_id, level, isChecked) {
+        window.updateFacilityDisability = async function(fac_id, level, isChecked) {
             data[fac_id].disability[level] = isChecked;
             data[fac_id].lastUpdated = new Date().toISOString();
-            saveData();
-        }
+            await saveData();
+        };
+
+        window.saveAndLogout = async function() {
+            await saveData();
+            authenticatedFacilities[currentFacility] = false;
+            alert('保存しました。ログアウトします。');
+            window.switchTab('view');
+        };
 
         // 初期化
-        initData();
-        renderFacilityList();
+        loadData();
+        setupRealtimeListener();
     </script>
 </body>
 </html>
