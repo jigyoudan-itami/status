@@ -79,8 +79,8 @@
         </div>
 
         <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('view')">👁️ 確認（ケアマネジャー向け）</button>
-            <button class="tab-btn" onclick="switchTab('input')">✏️ 入力（事業所向け）</button>
+            <button class="tab-btn active" data-tab="view">👁️ 確認（ケアマネジャー向け）</button>
+            <button class="tab-btn" data-tab="input">✏️ 入力（事業所向け）</button>
         </div>
 
         <div id="view" class="content active">
@@ -106,7 +106,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <span id="modal-title"></span>
-                <button class="close-btn" onclick="closeModal()">×</button>
+                <button class="close-btn" id="close-modal-btn">×</button>
             </div>
             <div id="modal-body"></div>
         </div>
@@ -149,6 +149,32 @@
         let data = {};
         let currentFacility = 1;
         let authenticatedFacilities = {};
+
+        // タブ切り替え
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const tab = this.getAttribute('data-tab');
+                switchTab(tab);
+            });
+        });
+
+        function switchTab(tab) {
+            document.querySelectorAll('.content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tab).classList.add('active');
+            document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+            
+            if (tab === 'input') renderInputForm();
+            if (tab === 'view') renderFacilityList();
+        }
+
+        // モーダル閉じる
+        document.getElementById('close-modal-btn').addEventListener('click', closeModal);
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
 
         // Firebase からデータを読み込み
         async function loadData() {
@@ -223,24 +249,6 @@
             }
         }
 
-        window.switchTab = function(tab) {
-            document.querySelectorAll('.content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-            document.getElementById(tab).classList.add('active');
-            
-            // クリックされたボタンをアクティブに
-            const buttons = document.querySelectorAll('.tab-btn');
-            buttons.forEach(btn => {
-                if ((tab === 'view' && btn.textContent.includes('確認')) || 
-                    (tab === 'input' && btn.textContent.includes('入力'))) {
-                    btn.classList.add('active');
-                }
-            });
-            
-            if (tab === 'input') renderInputForm();
-            if (tab === 'view') renderFacilityList();
-        };
-
         function isOutdated(fac_id) {
             const f = facilities.find(f => f.id === fac_id);
             let lastUpdate;
@@ -277,7 +285,7 @@
                 const categoryClass = f.category === 'デイサービス' ? 'day' : f.category === '訪問系' ? 'visit' : f.category === '施設系' ? 'facility' : f.category === '障害系' ? 'disability' : 'complex';
                 
                 html += `
-                    <div class="facility-card ${available ? 'has-vacancy' : ''} category-${categoryClass}" onclick="openModal(${f.id})">
+                    <div class="facility-card ${available ? 'has-vacancy' : ''} category-${categoryClass}" data-facility-id="${f.id}">
                         <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
                             <div>
                                 <div class="facility-name">${f.name}</div>
@@ -308,10 +316,19 @@
                 html += `<button class="detail-btn">詳細を見る</button></div>`;
             });
             document.getElementById('facility-list').innerHTML = html;
+
+            // カードクリックイベントを追加
+            document.querySelectorAll('.facility-card').forEach(card => {
+                card.addEventListener('click', function(e) {
+                    if (!e.target.classList.contains('detail-btn')) return;
+                    const facId = parseInt(this.getAttribute('data-facility-id'));
+                    openModal(facId);
+                });
+            });
         }
 
-        window.openModal = function(fac_id) {
-            const f = facilities.find(f => f.id === fac_id);
+        function openModal(fac_id) {
+            const f = facilities.find(fac => fac.id === fac_id);
             document.getElementById('modal-title').textContent = f.name;
 
             let body = '';
@@ -354,60 +371,115 @@
             }
             document.getElementById('modal-body').innerHTML = body;
             document.getElementById('modal').classList.add('active');
-        };
-
-        window.closeModal = function() {
-            document.getElementById('modal').classList.remove('active');
-        };
+        }
 
         function renderInputForm() {
-            const f = facilities.find(f => f.id === currentFacility);
+            const f = facilities.find(fac => fac.id === currentFacility);
             
+            // パスワード認証チェック
             if (!authenticatedFacilities[currentFacility]) {
-                let selectorHtml = '';
-                facilities.forEach(fac => {
-                    selectorHtml += `<button class="selector-btn ${fac.id === currentFacility ? 'active' : ''}" onclick="selectFacility(${fac.id})">${fac.name}</button>`;
-                });
-                document.getElementById('facility-selector').innerHTML = selectorHtml;
-
-                let authHtml = `
-                    <div style="max-width: 400px; margin: 40px auto; padding: 30px; background: #FBF9FA; border-radius: 12px; border: 2px solid #D99AAD; text-align: center;">
-                        <div style="font-size: 18px; font-weight: bold; color: #D99AAD; margin-bottom: 20px;">🔒 パスワード認証</div>
-                        <div style="font-size: 14px; color: #2D2E1B; margin-bottom: 20px;">${f.name}</div>
-                        <div class="form-group">
-                            <label style="text-align: left;">パスワードを入力してください</label>
-                            <input type="password" id="auth-password" placeholder="パスワード" onkeypress="if(event.key==='Enter') authenticatePassword(${currentFacility})">
-                        </div>
-                        <button class="save-btn" onclick="authenticatePassword(${currentFacility})">ログイン</button>
-                    </div>
-                `;
-                document.getElementById('input-form').innerHTML = authHtml;
+                renderAuthForm(f);
                 return;
             }
 
+            // 認証済みの場合、入力フォームを表示
+            renderEditForm(f);
+        }
+
+        function renderAuthForm(f) {
             let selectorHtml = '';
             facilities.forEach(fac => {
-                selectorHtml += `<button class="selector-btn ${fac.id === currentFacility ? 'active' : ''}" onclick="selectFacility(${fac.id})">${fac.name}</button>`;
+                selectorHtml += `<button class="selector-btn ${fac.id === currentFacility ? 'active' : ''}" data-fac-id="${fac.id}">${fac.name}</button>`;
             });
             document.getElementById('facility-selector').innerHTML = selectorHtml;
+
+            // 事業所選択イベント
+            document.querySelectorAll('.selector-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    currentFacility = parseInt(this.getAttribute('data-fac-id'));
+                    renderInputForm();
+                });
+            });
+
+            let authHtml = `
+                <div style="max-width: 400px; margin: 40px auto; padding: 30px; background: #FBF9FA; border-radius: 12px; border: 2px solid #D99AAD; text-align: center;">
+                    <div style="font-size: 18px; font-weight: bold; color: #D99AAD; margin-bottom: 20px;">🔒 パスワード認証</div>
+                    <div style="font-size: 14px; color: #2D2E1B; margin-bottom: 20px;">${f.name}</div>
+                    <div class="form-group">
+                        <label style="text-align: left;">パスワードを入力してください</label>
+                        <input type="password" id="auth-password" placeholder="パスワード">
+                    </div>
+                    <button class="save-btn" id="login-btn">ログイン</button>
+                </div>
+            `;
+            document.getElementById('input-form').innerHTML = authHtml;
+            
+            // イベントリスナーを設定
+            setTimeout(() => {
+                const passwordInput = document.getElementById('auth-password');
+                const loginBtn = document.getElementById('login-btn');
+                
+                if (passwordInput && loginBtn) {
+                    loginBtn.addEventListener('click', () => authenticatePassword(f));
+                    
+                    passwordInput.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') authenticatePassword(f);
+                    });
+                    
+                    passwordInput.focus();
+                }
+            }, 100);
+        }
+
+        function authenticatePassword(f) {
+            const inputElement = document.getElementById('auth-password');
+            if (!inputElement) return;
+            
+            const inputPassword = inputElement.value.trim();
+            
+            if (inputPassword === f.password) {
+                authenticatedFacilities[f.id] = true;
+                renderInputForm();
+            } else {
+                alert('パスワードが間違っています');
+                inputElement.value = '';
+                inputElement.focus();
+            }
+        }
+
+        function renderEditForm(f) {
+            let selectorHtml = '';
+            facilities.forEach(fac => {
+                selectorHtml += `<button class="selector-btn ${fac.id === currentFacility ? 'active' : ''}" data-fac-id="${fac.id}">${fac.name}</button>`;
+            });
+            document.getElementById('facility-selector').innerHTML = selectorHtml;
+
+            // 事業所選択イベント
+            document.querySelectorAll('.selector-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    currentFacility = parseInt(this.getAttribute('data-fac-id'));
+                    renderInputForm();
+                });
+            });
 
             let formHtml = '';
             
             if (f.type === 'day' || f.type === 'visit' || f.type === 'complex') {
-                formHtml += `<div style="margin-bottom: 20px;"><strong style="font-size: 14px;">曜日ごとの募集状況を入力</strong></div>`;
+                formHtml += '<div style="margin-bottom: 20px;"><strong style="font-size: 14px;">曜日ごとの募集状況を入力</strong></div>';
                 formHtml += `
                     <div style="background: #FBF9FA; border: 1px solid #D99AAD; border-radius: 6px; padding: 12px; margin-bottom: 20px;">
                         <strong style="font-size: 12px; color: #D99AAD;">定休日を設定</strong>
-                        <div class="checkbox-group" style="margin-top: 8px;">
-                            ${days.map(d => `
-                                <div class="checkbox-item">
-                                    <input type="checkbox" id="holiday-${d}" ${data[currentFacility].holidays && data[currentFacility].holidays.includes(d) ? 'checked' : ''} onchange="updateHoliday(${currentFacility}, '${d}', this.checked)">
-                                    <label for="holiday-${d}">${dayLabels[d]}曜日</label>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
+                        <div class="checkbox-group" style="margin-top: 8px;">`;
+                
+                days.forEach(d => {
+                    formHtml += `
+                        <div class="checkbox-item">
+                            <input type="checkbox" class="holiday-check" data-day="${d}" ${data[currentFacility].holidays && data[currentFacility].holidays.includes(d) ? 'checked' : ''}>
+                            <label>${dayLabels[d]}曜日</label>
+                        </div>`;
+                });
+                
+                formHtml += `</div></div>`;
 
                 days.forEach(d => {
                     if (data[currentFacility].holidays && data[currentFacility].holidays.includes(d)) return;
@@ -418,198 +490,255 @@
                             <div class="day-title">${dayLabels[d]}曜日</div>
                             <div class="checkbox-group">
                                 <div class="checkbox-item">
-                                    <input type="checkbox" id="morning-${d}" ${d_data.morning ? 'checked' : ''} onchange="updateDayTime(${currentFacility}, '${d}', 'morning', this.checked)">
-                                    <label for="morning-${d}">午前</label>
+                                    <input type="checkbox" class="time-check" data-day="${d}" data-time="morning" ${d_data.morning ? 'checked' : ''}>
+                                    <label>午前</label>
                                 </div>
                                 <div class="checkbox-item">
-                                    <input type="checkbox" id="afternoon-${d}" ${d_data.afternoon ? 'checked' : ''} onchange="updateDayTime(${currentFacility}, '${d}', 'afternoon', this.checked)">
-                                    <label for="afternoon-${d}">午後</label>
+                                    <input type="checkbox" class="time-check" data-day="${d}" data-time="afternoon" ${d_data.afternoon ? 'checked' : ''}>
+                                    <label>午後</label>
                                 </div>
                                 <div class="checkbox-item">
-                                    <input type="checkbox" id="evening-${d}" ${d_data.evening ? 'checked' : ''} onchange="updateDayTime(${currentFacility}, '${d}', 'evening', this.checked)">
-                                    <label for="evening-${d}">夜間</label>
+                                    <input type="checkbox" class="time-check" data-day="${d}" data-time="evening" ${d_data.evening ? 'checked' : ''}>
+                                    <label>夜間</label>
                                 </div>
                             </div>
                             
                             <div class="form-group">
                                 <label>対応要介護度（複数選択可）</label>
-                                <div class="checkbox-group">
-                                    ${['要支援1', '要支援2', '要介護1', '要介護2', '要介護3', '要介護4', '要介護5', '非該当'].map(level => `
-                                        <div class="checkbox-item">
-                                            <input type="checkbox" id="care-${d}-${level}" ${d_data.care[level] ? 'checked' : ''} onchange="updateRequirement(${currentFacility}, '${d}', 'care', '${level}', this.checked)">
-                                            <label for="care-${d}-${level}">${level}</label>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
+                                <div class="checkbox-group">`;
+                    
+                    ['要支援1', '要支援2', '要介護1', '要介護2', '要介護3', '要介護4', '要介護5', '非該当'].forEach(level => {
+                        formHtml += `
+                            <div class="checkbox-item">
+                                <input type="checkbox" class="care-check" data-day="${d}" data-level="${level}" ${d_data.care[level] ? 'checked' : ''}>
+                                <label>${level}</label>
+                            </div>`;
+                    });
+                    
+                    formHtml += `</div></div>`;
 
-                            ${f.type === 'visit' || f.type === 'complex' ? `
-                                <div class="form-group">
-                                    <label>対応障害等級（複数選択可）</label>
-                                    <div class="checkbox-group">
-                                        ${['1', '2', '3', '4', '5', '6', '7'].map(level => `
-                                            <div class="checkbox-item">
-                                                <input type="checkbox" id="disability-${d}-${level}" ${d_data.disability[level] ? 'checked' : ''} onchange="updateRequirement(${currentFacility}, '${d}', 'disability', '${level}', this.checked)">
-                                                <label for="disability-${d}-${level}">第${level}級</label>
-                                            </div>
-                                        `).join('')}
-                                    </div>
-                                </div>
-                            ` : ''}
+                    if (f.type === 'visit' || f.type === 'complex') {
+                        formHtml += `
+                            <div class="form-group">
+                                <label>対応障害等級（複数選択可）</label>
+                                <div class="checkbox-group">`;
+                        
+                        ['1', '2', '3', '4', '5', '6', '7'].forEach(level => {
+                            formHtml += `
+                                <div class="checkbox-item">
+                                    <input type="checkbox" class="disability-check" data-day="${d}" data-level="${level}" ${d_data.disability[level] ? 'checked' : ''}>
+                                    <label>第${level}級</label>
+                                </div>`;
+                        });
+                        
+                        formHtml += `</div></div>`;
+                    }
 
+                    formHtml += `
                             <div class="form-group">
                                 <label>その他備考</label>
-                                <textarea onchange="updateNote(${currentFacility}, '${d}', this.value)">${d_data.note || ''}</textarea>
+                                <textarea class="note-input" data-day="${d}">${d_data.note || ''}</textarea>
                             </div>
-                        </div>
-                    `;
+                        </div>`;
                 });
             } else {
+                formHtml += '<div style="margin-bottom: 20px;"><strong style="font-size: 14px;">基本情報</strong></div>';
                 formHtml += `
-                    <div style="margin-bottom: 20px;"><strong style="font-size: 14px;">基本情報</strong></div>
                     <div class="form-group">
                         <label>電話番号</label>
-                        <input type="tel" value="${data[currentFacility].phone || ''}" onchange="updatePhone(${currentFacility}, this.value)">
+                        <input type="tel" id="facility-phone" value="${data[currentFacility].phone || ''}">
                     </div>
                     <div class="form-group">
                         <label>募集状況</label>
-                        <select onchange="updateStatus(${currentFacility}, this.value)">
-                            <option ${data[currentFacility].status === 'open' ? 'selected' : ''}>open</option>
-                            <option ${data[currentFacility].status === 'limited' ? 'selected' : ''}>limited</option>
-                            <option ${data[currentFacility].status === 'closed' ? 'selected' : ''}>closed</option>
+                        <select id="facility-status">
+                            <option value="open" ${data[currentFacility].status === 'open' ? 'selected' : ''}>募集中</option>
+                            <option value="limited" ${data[currentFacility].status === 'limited' ? 'selected' : ''}>限定募集</option>
+                            <option value="closed" ${data[currentFacility].status === 'closed' ? 'selected' : ''}>募集なし</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>定員残数（名）</label>
-                        <input type="number" value="${data[currentFacility].capacity}" min="0" onchange="updateCapacity(${currentFacility}, this.value)">
-                    </div>
+                        <input type="number" id="facility-capacity" value="${data[currentFacility].capacity}" min="0">
+                    </div>`;
 
-                    ${f.category === '施設系' ? `
+                if (f.category === '施設系') {
+                    formHtml += `
                         <div class="form-group">
                             <label>対応要介護度（複数選択可）</label>
-                            <div class="checkbox-group">
-                                ${['要支援1', '要支援2', '要介護1', '要介護2', '要介護3', '要介護4', '要介護5', '非該当'].map(level => `
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="care-facility-${level}" ${data[currentFacility].care[level] ? 'checked' : ''} onchange="updateFacilityCare(${currentFacility}, '${level}', this.checked)">
-                                        <label for="care-facility-${level}">${level}</label>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
+                            <div class="checkbox-group">`;
+                    
+                    ['要支援1', '要支援2', '要介護1', '要介護2', '要介護3', '要介護4', '要介護5', '非該当'].forEach(level => {
+                        formHtml += `
+                            <div class="checkbox-item">
+                                <input type="checkbox" class="facility-care-check" data-level="${level}" ${data[currentFacility].care[level] ? 'checked' : ''}>
+                                <label>${level}</label>
+                            </div>`;
+                    });
+                    
+                    formHtml += `</div></div>`;
+                }
 
-                    ${f.category === '障害系' ? `
+                if (f.category === '障害系') {
+                    formHtml += `
                         <div class="form-group">
                             <label>対応障害等級（複数選択可）</label>
-                            <div class="checkbox-group">
-                                ${['1', '2', '3', '4', '5', '6', '7'].map(level => `
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="disability-facility-${level}" ${data[currentFacility].disability[level] ? 'checked' : ''} onchange="updateFacilityDisability(${currentFacility}, '${level}', this.checked)">
-                                        <label for="disability-facility-${level}">第${level}級</label>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
+                            <div class="checkbox-group">`;
+                    
+                    ['1', '2', '3', '4', '5', '6', '7'].forEach(level => {
+                        formHtml += `
+                            <div class="checkbox-item">
+                                <input type="checkbox" class="facility-disability-check" data-level="${level}" ${data[currentFacility].disability[level] ? 'checked' : ''}>
+                                <label>第${level}級</label>
+                            </div>`;
+                    });
+                    
+                    formHtml += `</div></div>`;
+                }
 
+                formHtml += `
                     <div class="form-group">
                         <label>備考</label>
-                        <textarea onchange="updateNote(${currentFacility}, null, this.value)">${data[currentFacility].note || ''}</textarea>
-                    </div>
-                `;
+                        <textarea id="facility-note">${data[currentFacility].note || ''}</textarea>
+                    </div>`;
             }
 
-            formHtml += `<button class="save-btn" onclick="saveAndLogout()">保存してログアウト</button>`;
+            formHtml += '<button class="save-btn" id="save-logout-btn">保存してログアウト</button>';
             document.getElementById('input-form').innerHTML = formHtml;
+
+            // イベントリスナーを追加
+            attachFormEventListeners(f);
         }
 
-        window.selectFacility = function(id) {
-            currentFacility = id;
-            renderInputForm();
-        };
+        function attachFormEventListeners(f) {
+            // 定休日チェックボックス
+            document.querySelectorAll('.holiday-check').forEach(checkbox => {
+                checkbox.addEventListener('change', async function() {
+                    const day = this.getAttribute('data-day');
+                    if (!data[currentFacility].holidays) data[currentFacility].holidays = [];
+                    
+                    if (this.checked) {
+                        if (!data[currentFacility].holidays.includes(day)) {
+                            data[currentFacility].holidays.push(day);
+                        }
+                    } else {
+                        data[currentFacility].holidays = data[currentFacility].holidays.filter(d => d !== day);
+                    }
+                    await saveData();
+                    renderInputForm();
+                });
+            });
 
-        window.authenticatePassword = function(fac_id) {
-            const f = facilities.find(f => f.id === fac_id);
-            const inputPassword = document.getElementById('auth-password').value;
-            
-            if (inputPassword === f.password) {
-                authenticatedFacilities[fac_id] = true;
-                renderInputForm();
-            } else {
-                alert('パスワードが間違っています');
-                document.getElementById('auth-password').value = '';
+            // 時間帯チェックボックス
+            document.querySelectorAll('.time-check').forEach(checkbox => {
+                checkbox.addEventListener('change', async function() {
+                    const day = this.getAttribute('data-day');
+                    const time = this.getAttribute('data-time');
+                    data[currentFacility][day][time] = this.checked;
+                    data[currentFacility][day].lastUpdated = new Date().toISOString();
+                    await saveData();
+                });
+            });
+
+            // 要介護度チェックボックス（曜日別）
+            document.querySelectorAll('.care-check').forEach(checkbox => {
+                checkbox.addEventListener('change', async function() {
+                    const day = this.getAttribute('data-day');
+                    const level = this.getAttribute('data-level');
+                    data[currentFacility][day].care[level] = this.checked;
+                    data[currentFacility][day].lastUpdated = new Date().toISOString();
+                    await saveData();
+                });
+            });
+
+            // 障害等級チェックボックス（曜日別）
+            document.querySelectorAll('.disability-check').forEach(checkbox => {
+                checkbox.addEventListener('change', async function() {
+                    const day = this.getAttribute('data-day');
+                    const level = this.getAttribute('data-level');
+                    data[currentFacility][day].disability[level] = this.checked;
+                    data[currentFacility][day].lastUpdated = new Date().toISOString();
+                    await saveData();
+                });
+            });
+
+            // 備考入力（曜日別）
+            document.querySelectorAll('.note-input').forEach(textarea => {
+                textarea.addEventListener('change', async function() {
+                    const day = this.getAttribute('data-day');
+                    data[currentFacility][day].note = this.value;
+                    data[currentFacility][day].lastUpdated = new Date().toISOString();
+                    await saveData();
+                });
+            });
+
+            // 施設系の入力フィールド
+            const phoneInput = document.getElementById('facility-phone');
+            if (phoneInput) {
+                phoneInput.addEventListener('change', async function() {
+                    data[currentFacility].phone = this.value;
+                    data[currentFacility].lastUpdated = new Date().toISOString();
+                    await saveData();
+                });
             }
-        };
 
-        window.updateHoliday = async function(fac_id, day, isChecked) {
-            if (!data[fac_id].holidays) data[fac_id].holidays = [];
-            if (isChecked) {
-                if (!data[fac_id].holidays.includes(day)) data[fac_id].holidays.push(day);
-            } else {
-                data[fac_id].holidays = data[fac_id].holidays.filter(d => d !== day);
+            const statusSelect = document.getElementById('facility-status');
+            if (statusSelect) {
+                statusSelect.addEventListener('change', async function() {
+                    data[currentFacility].status = this.value;
+                    data[currentFacility].lastUpdated = new Date().toISOString();
+                    await saveData();
+                });
             }
-            await saveData();
-        };
 
-        window.updateDayTime = async function(fac_id, day, time, isChecked) {
-            data[fac_id][day][time] = isChecked;
-            data[fac_id][day].lastUpdated = new Date().toISOString();
-            await saveData();
-        };
-
-        window.updateRequirement = async function(fac_id, day, type, level, isChecked) {
-            data[fac_id][day][type][level] = isChecked;
-            data[fac_id][day].lastUpdated = new Date().toISOString();
-            await saveData();
-        };
-
-        window.updateNote = async function(fac_id, day, value) {
-            if (day) {
-                data[fac_id][day].note = value;
-                data[fac_id][day].lastUpdated = new Date().toISOString();
-            } else {
-                data[fac_id].note = value;
-                data[fac_id].lastUpdated = new Date().toISOString();
+            const capacityInput = document.getElementById('facility-capacity');
+            if (capacityInput) {
+                capacityInput.addEventListener('change', async function() {
+                    data[currentFacility].capacity = parseInt(this.value) || 0;
+                    data[currentFacility].lastUpdated = new Date().toISOString();
+                    await saveData();
+                });
             }
-            await saveData();
-        };
 
-        window.updatePhone = async function(fac_id, value) {
-            data[fac_id].phone = value;
-            data[fac_id].lastUpdated = new Date().toISOString();
-            await saveData();
-        };
+            // 要介護度チェックボックス（施設）
+            document.querySelectorAll('.facility-care-check').forEach(checkbox => {
+                checkbox.addEventListener('change', async function() {
+                    const level = this.getAttribute('data-level');
+                    data[currentFacility].care[level] = this.checked;
+                    data[currentFacility].lastUpdated = new Date().toISOString();
+                    await saveData();
+                });
+            });
 
-        window.updateStatus = async function(fac_id, value) {
-            data[fac_id].status = value;
-            data[fac_id].lastUpdated = new Date().toISOString();
-            await saveData();
-        };
+            // 障害等級チェックボックス（施設）
+            document.querySelectorAll('.facility-disability-check').forEach(checkbox => {
+                checkbox.addEventListener('change', async function() {
+                    const level = this.getAttribute('data-level');
+                    data[currentFacility].disability[level] = this.checked;
+                    data[currentFacility].lastUpdated = new Date().toISOString();
+                    await saveData();
+                });
+            });
 
-        window.updateCapacity = async function(fac_id, value) {
-            data[fac_id].capacity = parseInt(value) || 0;
-            data[fac_id].lastUpdated = new Date().toISOString();
-            await saveData();
-        };
+            const noteTextarea = document.getElementById('facility-note');
+            if (noteTextarea) {
+                noteTextarea.addEventListener('change', async function() {
+                    data[currentFacility].note = this.value;
+                    data[currentFacility].lastUpdated = new Date().toISOString();
+                    await saveData();
+                });
+            }
 
-        window.updateFacilityCare = async function(fac_id, level, isChecked) {
-            data[fac_id].care[level] = isChecked;
-            data[fac_id].lastUpdated = new Date().toISOString();
-            await saveData();
-        };
-
-        window.updateFacilityDisability = async function(fac_id, level, isChecked) {
-            data[fac_id].disability[level] = isChecked;
-            data[fac_id].lastUpdated = new Date().toISOString();
-            await saveData();
-        };
-
-        window.saveAndLogout = async function() {
-            await saveData();
-            authenticatedFacilities[currentFacility] = false;
-            alert('保存しました。ログアウトします。');
-            window.switchTab('view');
-        };
+            // 保存してログアウトボタン
+            const saveLogoutBtn = document.getElementById('save-logout-btn');
+            if (saveLogoutBtn) {
+                saveLogoutBtn.addEventListener('click', async function() {
+                    await saveData();
+                    authenticatedFacilities[currentFacility] = false;
+                    alert('保存しました。ログアウトします。');
+                    switchTab('view');
+                });
+            }
+        }
 
         // 初期化
         loadData();
