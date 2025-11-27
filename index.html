@@ -374,14 +374,26 @@
         }
 
         function renderInputForm() {
+            console.log('renderInputForm 開始');
+            console.log('currentFacility:', currentFacility);
+            console.log('authenticatedFacilities:', authenticatedFacilities);
+            
             const f = facilities.find(fac => fac.id === currentFacility);
+            console.log('選択された事業所:', f);
+            
+            if (!f) {
+                console.error('事業所が見つかりません:', currentFacility);
+                return;
+            }
             
             // パスワード認証チェック
             if (!authenticatedFacilities[currentFacility]) {
+                console.log('未認証 - 認証画面を表示');
                 renderAuthForm(f);
                 return;
             }
 
+            console.log('認証済み - 入力フォームを表示');
             // 認証済みの場合、入力フォームを表示
             renderEditForm(f);
         }
@@ -432,15 +444,28 @@
         }
 
         function authenticatePassword(f) {
+            console.log('認証開始:', f.name);
             const inputElement = document.getElementById('auth-password');
-            if (!inputElement) return;
+            console.log('入力欄:', inputElement);
+            
+            if (!inputElement) {
+                console.error('パスワード入力欄が見つかりません');
+                alert('エラー: 入力欄が見つかりません');
+                return;
+            }
             
             const inputPassword = inputElement.value.trim();
+            console.log('入力されたパスワード:', inputPassword);
+            console.log('正しいパスワード:', f.password);
+            console.log('一致:', inputPassword === f.password);
             
             if (inputPassword === f.password) {
+                console.log('認証成功！');
                 authenticatedFacilities[f.id] = true;
+                console.log('authenticatedFacilities:', authenticatedFacilities);
                 renderInputForm();
             } else {
+                console.log('認証失敗');
                 alert('パスワードが間違っています');
                 inputElement.value = '';
                 inputElement.focus();
@@ -448,6 +473,9 @@
         }
 
         function renderEditForm(f) {
+            console.log('renderEditForm 開始:', f.name);
+            console.log('data[currentFacility]:', data[currentFacility]);
+            
             let selectorHtml = '';
             facilities.forEach(fac => {
                 selectorHtml += `<button class="selector-btn ${fac.id === currentFacility ? 'active' : ''}" data-fac-id="${fac.id}">${fac.name}</button>`;
